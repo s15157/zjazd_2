@@ -5,13 +5,17 @@ using System.Threading.Tasks;
 using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using Zadanie_2.Models;
+using System.Data.SqlClient;
 
 namespace Zadanie_2.Controllers
 {
+
     [ApiController]
     [Route("api/students")]
-    public class StudentsController : Controller
+    public class StudentsController : ControllerBase
     {
+        private const string ConString = "Data Source=db-mssql;Initial Catalog=s15157;Integrated Security=True";
+        
         /*
          * HttpGet, -> Pobierz z 80
          * HttpPost, -> Dodaj zasób do BD
@@ -20,10 +24,65 @@ namespace Zadanie_2.Controllers
          * HttpDelete -> Usuń zasób
          */
 
+
+        //Zadanie 4.4
         [HttpGet]
-        public string GetStudents([FromQuery] string orderBy)
+        public IActionResult GetStudents()
         {
-            return $"Kowalski, Malewski, Andrzejewski sortowanie={orderBy}";
+            var list = new List<Student>();
+
+            using (SqlConnection con = new SqlConnection(ConString))
+            using (SqlCommand com = new SqlCommand())
+            {
+                com.Connection = con;
+                com.CommandText = "SELECT IndexNumber, FirstName, LastName, BirthDate, Semester, Name FROM Student s INNER JOIN Enrollment e ON s.IdEnrollment=e.IdEnrollment INNER JOIN Studies st ON e.IdStudy=st.IdStudy;";
+
+                con.Open();
+                SqlDataReader dr = com.ExecuteReader();
+                while (dr.Read())
+                {
+                    var st = new Student();
+                    st.IndexNumber = dr["IndexNumber"].ToString();
+                    st.FirstName = dr["FirstName"].ToString();
+                    st.LastName = dr["LastName"].ToString();
+                    st.BirthDate = dr["BirthDate"].ToString();
+                    st.Semester = dr["Semester"].ToString();
+                    st.Name = dr["Name"].ToString();
+
+                    list.Add(st);
+                }
+
+            }
+            return Ok(list);
+            
+        }
+
+        //Zadanie 4.3
+        [HttpGet("{id}")]
+        public IActionResult GetEnrollment(string id)
+        {
+            var list = new List<Student>();
+
+            using (SqlConnection con = new SqlConnection(ConString))
+            using (SqlCommand com = new SqlCommand())
+            {
+                com.Connection = con;
+                com.CommandText = "SELECT IndexNumber, Semester FROM Student s INNER JOIN Enrollment e ON s.IdEnrollment=e.IdEnrollment WHERE IndexNumber='" + id + "';";
+
+                con.Open();
+                SqlDataReader dr = com.ExecuteReader();
+                while (dr.Read())
+                {
+                    var st = new Student();
+
+                    st.IndexNumber = dr["IndexNumber"].ToString();
+                    st.Semester = dr["Semester"].ToString();
+
+                    list.Add(st);
+                }
+
+            }
+            return Ok(list);
         }
 
         [HttpPost]
@@ -31,21 +90,6 @@ namespace Zadanie_2.Controllers
         {
             student.IndexNumber = $"s{new Random().Next(1, 20000)}";
             return Ok(student);
-        }
-
-        [HttpGet("{id}")]
-        public IActionResult GetStudnetById(int id)
-        {
-            if (id == 1)
-            {
-                return Ok("Kowalski");
-            }
-            else if (id == 2)
-            {
-                return Ok("Malewski");
-            }
-
-            return NotFound("Nie znaleziono studenta");
         }
 
         //Zadanie nr.7
